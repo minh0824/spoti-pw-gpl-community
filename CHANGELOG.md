@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/minh0824/spoti-pw-gpl-community/compare/v0.21.1...v0.22.0) (2026-10-09)
+
+
+### Features
+
+* create GPL community edition ([20ffd83](https://github.com/minh0824/spoti-pw-gpl-community/commit/20ffd8301f18ffaf6f59a7935f5c877d3edbf9f8))
+
 ## [0.21.1](https://github.com/skopevoj/spoti.pw/compare/v0.21.0...v0.21.1) (2026-09-21)
 
 
