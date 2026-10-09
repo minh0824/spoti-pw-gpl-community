@@ -249,5 +249,4 @@ static BOOL isSettingsRoot(UIViewController *list) {
     SGRegisterPages();
     SGCheckSigningOnce();
     SGWatchForUpdates();
-    SGWatchForDonate();
 }

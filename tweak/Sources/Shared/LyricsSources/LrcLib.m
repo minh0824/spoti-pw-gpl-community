@@ -15,7 +15,7 @@ static NSString *const kSearch = @"https://lrclib.net/api/search";
 static const NSInteger kLengthSlack = 4;
 
 static NSDictionary<NSString *, NSString *> *headers(void) {
-    return @{@"User-Agent": @"spoti.pw " @SG_VERSION @" (https://github.com/skopevoj/spoti.pw)"};
+    return @{@"User-Agent": @"spoti.pw GPL Community " @SG_VERSION @" (https://github.com/minh0824/spoti-pw-gpl-community)"};
 }
 
 // [00:34.30] Look — the timestamp in minutes, seconds and hundredths, or thousandths where a line

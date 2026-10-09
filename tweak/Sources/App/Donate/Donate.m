@@ -1,18 +1,8 @@
 #import "Core/SGCore.h"
 #import "Settings/SGPageStyle.h"
-#import "App/About/About.h"
-#import "App/Onboarding/Onboarding.h"
 #import "Donate.h"
 
 NSString *const SGKofiURL = @"https://ko-fi.com/darkksh";
-
-// Outside the "spotifyglass." prefix, so Reset all settings does not bring the sheet back early.
-static NSString *const kNextKey = @"spotipw.donate.next";
-static NSString *const kAfterTourKey = @"spotipw.donate.aftertour";
-static const NSTimeInterval kDay = 86400;
-static const NSTimeInterval kFirstAsk = 2 * kDay, kEvery = 14 * kDay, kAfterDonating = 90 * kDay;
-static const NSTimeInterval kSettle = 20, kRetry = 5;
-static const NSInteger kTries = 24;
 
 static UIColor *rgb(uint32_t v, CGFloat alpha) {
     return [UIColor colorWithRed:((v >> 16) & 0xFF) / 255.0 green:((v >> 8) & 0xFF) / 255.0 blue:(v & 0xFF) / 255.0 alpha:alpha];
@@ -221,30 +211,6 @@ static CAShapeLayer *newStroke(CGFloat width) {
 
 @end
 
-#pragma mark - schedule
-
-static NSTimeInterval now(void) {
-    return NSDate.date.timeIntervalSince1970;
-}
-
-static NSTimeInterval nextAsk(void) {
-    NSUserDefaults *store = NSUserDefaults.standardUserDefaults;
-    double next = [store doubleForKey:kNextKey];
-    if (next <= 0) {
-        next = now() + kFirstAsk;
-        [store setDouble:next forKey:kNextKey];
-    }
-    return next;
-}
-
-static void askAgainIn(NSTimeInterval wait) {
-    [NSUserDefaults.standardUserDefaults setDouble:now() + wait forKey:kNextKey];
-}
-
-BOOL SGDonateAfterTourPending(void) {
-    return [NSUserDefaults.standardUserDefaults boolForKey:kAfterTourKey];
-}
-
 #pragma mark - sheet
 
 static const CGFloat kCardMargin = 10, kCardPadding = 26;
@@ -354,7 +320,7 @@ static char kCardGlassKey;
     UILabel *eyebrow = [self label:@"A STUDENT PROJECT" font:[UIFont systemFontOfSize:12 weight:UIFontWeightBold] color:SGKofiColor()];
     eyebrow.attributedText = [[NSAttributedString alloc] initWithString:eyebrow.text attributes:@{NSKernAttributeName: @1.4}];
     UILabel *title = [self label:@"Enjoying spoti.pw?" font:[UIFont systemFontOfSize:26 weight:UIFontWeightBold] color:UIColor.whiteColor];
-    UILabel *body = [self label:@"I'm a student and I build it for free, in my spare time. If it made your music better, a coffee helps me keep going."
+    UILabel *body = [self label:@"Every feature is available without donating. This optional coffee supports the original author and unlocks nothing."
                            font:[UIFont systemFontOfSize:15] color:[UIColor colorWithWhite:1 alpha:0.72]];
 
     SGKofiButton *donate = [[SGKofiButton alloc] initWithTitle:@"Buy me a coffee" prominent:YES];
@@ -448,7 +414,6 @@ static char kCardGlassKey;
 }
 
 - (void)donate {
-    askAgainIn(kAfterDonating);
     SGLog(@"donate: opened Ko-fi");
     [self leaveThen:^{ SGOpenURL(SGKofiURL); }];
 }
@@ -462,7 +427,6 @@ static char kCardGlassKey;
 #pragma mark - entry
 
 static __weak SGDonateController *sg_sheet;
-static BOOL sg_offered;
 
 void SGShowDonateSheet(void) {
     UIViewController *top = SGTopController();
@@ -473,47 +437,7 @@ void SGShowDonateSheet(void) {
 }
 
 SGModRow *SGDonateRow(void) {
-    SGModRow *row = SGWithSymbol(SGActionRow(@"Support spoti.pw", @"Buy the student behind it a coffee", ^{ SGShowDonateSheet(); }), @"cup.and.saucer.fill");
+    SGModRow *row = SGWithSymbol(SGActionRow(@"Support the original author", @"Optional — every feature stays available", ^{ SGShowDonateSheet(); }), @"cup.and.saucer.fill");
     row.color = SGKofiColor();
     return row;
-}
-
-// Never over the tour or an alert. On schedule it also stays out of an update-notice run and asks once
-// a run; after a tour, first or replayed from the Mod page, it always comes.
-static void offerWhenClear(NSInteger tries) {
-    BOOL afterTour = SGDonateAfterTourPending();
-    if (!afterTour && (sg_offered || now() < nextAsk() || SGUpdateNoticeShown())) return;
-    UIViewController *top = SGTopController();
-    BOOL busy = !top || SGOnboardingShowing() || [top isKindOfClass:UIAlertController.class]
-        || UIApplication.sharedApplication.applicationState != UIApplicationStateActive;
-    if (busy) {
-        if (tries > 0)
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kRetry * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ offerWhenClear(tries - 1); });
-        return;
-    }
-    sg_offered = YES;
-    askAgainIn(kEvery);
-    [NSUserDefaults.standardUserDefaults removeObjectForKey:kAfterTourKey];
-    SGShowDonateSheet();
-    SGLog(@"donate: asked over %@%@", NSStringFromClass(top.class), afterTour ? @", after the tour" : @"");
-}
-
-void SGDonateAfterTour(BOOL restarting) {
-    [NSUserDefaults.standardUserDefaults setBool:YES forKey:kAfterTourKey];
-    if (!restarting) SGOfferDonate();
-}
-
-void SGOfferDonate(void) {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ offerWhenClear(kTries); });
-}
-
-void SGWatchForDonate(void) {
-    nextAsk();
-    __block id observer = [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification
-                                                                          object:nil
-                                                                           queue:NSOperationQueue.mainQueue
-                                                                      usingBlock:^(NSNotification *note) {
-        [NSNotificationCenter.defaultCenter removeObserver:observer];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kSettle * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ offerWhenClear(kTries); });
-    }];
 }
